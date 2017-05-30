@@ -21,14 +21,13 @@ def read_from_csv(filename_queue):
   _, csv_row = reader.read(filename_queue)
   record_defaults = [[1],[1],[1],[1]]
   col1, col2, col3, col4 = tf.decode_csv(csv_row, record_defaults=record_defaults)
-  features = tf.stack([col1,col2,col4])  
+  features = tf.stack([col1,col2])  
   label = tf.stack([col3])  
   return features, label
 
 def input_pipeline(filenm, batch_size, epo):
   filename_queue = tf.train.string_input_producer(["mtraining.dat"], num_epochs=epo, shuffle=False)  
   example, label = read_from_csv(filename_queue)
-  print (example)
   min_after_dequeue = 10000
   capacity = min_after_dequeue + 3 * batch_size
   example_batch, label_batch = tf.train.shuffle_batch(
@@ -40,8 +39,24 @@ def input_pipeline(filenm, batch_size, epo):
 
 file_length = file_len(myfilenm) - 1
 #examples, labels = input_pipeline(myfilenm,file_length, 1)
-examples, labels = input_pipeline(myfilenm,1000, 1)
+examples, labels = input_pipeline(myfilenm,5, 1)
 print ("file_length",file_length)
+#start building model:
+f_num = 2
+x = tf.placeholder(tf.float32, [None,f_num]) #f_num is feature number in each data
+#W = tf.Variable(tf.zeros([f_num, 1]))
+W = tf.Variable(tf.random_normal([f_num, 1],stddev=0.35))
+b = tf.Variable(tf.zeros([1]))
+#y = tf.matmul(x,W) + b
+y = tf.nn.softmax(tf.matmul(x, W) + b)
+#y = x * W + b
+y_ = tf.placeholder(tf.float32,[None,1])
+cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=y_, logits=y))
+accuracy = tf.reduce_mean(tf.reduce_sum(tf.square(y_-5*y)))
+train_step = tf.train.GradientDescentOptimizer(0.5).minimize(cross_entropy)
+
+
+
 with tf.Session() as sess:
   init = tf.global_variables_initializer()
   sess.run(init)
@@ -58,14 +73,24 @@ with tf.Session() as sess:
   i = 0
   try:
     while not coord.should_stop():
-      print("in while")
-      example_batch, label_batch = sess.run([examples, labels])
-      print(example_batch)
+      print("in ", i, " ")
+      batch_xs, batch_ys = sess.run([examples, labels])
+      if i == 11000 :
+        break;
+      sess.run(train_step, feed_dict={x: batch_xs, y_: batch_ys})
+      print("W:", sess.run(W),"b:", sess.run(b))
       i += 1
   except tf.errors.OutOfRangeError:
     print('Done training, epoch reached')
   finally:
     print ("in finally i:",i)
+    #coord.request_stop()
+    
+    #correct_prediction = tf.equal(tf.argmax(y, 1), tf.argmax(y_, 1))
+    print("batch_xs:\n",batch_xs)
+    #accuracy = tf.reduce_mean(tf.square(y_-y))
+    print(sess.run(accuracy, feed_dict={x: batch_xs,
+                                      y_: batch_ys}))
     coord.request_stop()
 
   coord.join(threads) 
