@@ -4,7 +4,7 @@ import numpy as np
 import tensorflow as tf
 import math as math
 import argparse
-myfilenm = "mtraining.dat"
+myfilenm = "mwtraining.dat"
 #np.set_printoptions(threshold='nan')
 #parser = argparse.ArgumentParser()
 #parser.add_argument('dataset')
@@ -20,9 +20,13 @@ def read_from_csv(filename_queue):
   reader = tf.TextLineReader(skip_header_lines=1)
   _, csv_row = reader.read(filename_queue)
   record_defaults = [[1],[1],[1],[1]]
-  col1, col2, col3, col4 = tf.decode_csv(csv_row, record_defaults=record_defaults)
-  features = tf.stack([col1,col2])  
-  label = tf.stack([col3])  
+  #record_defaults = [[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1]]
+  UID, MID, rating ,time= tf.decode_csv(csv_row, record_defaults=record_defaults)
+  #UID, MID, rating ,Gender,Age,Occup,Zipcode,mname,G0,G1,G2= tf.decode_csv(csv_row, record_defaults=record_defaults)
+  #UID, MID, rating ,Gender,Age,Occup,G0,G1,G2= tf.decode_csv(csv_row, record_defaults=record_defaults)
+  #features = tf.stack([UID,MID,Gender,Age,Occup,G0,G1,G2])  
+  features = tf.stack([UID,MID])  
+  label = tf.stack([rating])  
   return features, label
 
 def input_pipeline(filenm, batch_size, epo):
@@ -47,8 +51,8 @@ x = tf.placeholder(tf.float32, [None,f_num]) #f_num is feature number in each da
 #W = tf.Variable(tf.zeros([f_num, 1]))
 W = tf.Variable(tf.random_normal([f_num, 1],stddev=0.35))
 b = tf.Variable(tf.zeros([1]))
-#y = tf.matmul(x,W) + b
-y = tf.nn.softmax(tf.matmul(x, W) + b)
+y = tf.matmul(x,W) + b
+#y = tf.nn.softmax(tf.matmul(x, W) + b)
 #y = x * W + b
 y_ = tf.placeholder(tf.float32,[None,1])
 cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=y_, logits=y))
@@ -87,7 +91,7 @@ with tf.Session() as sess:
     #coord.request_stop()
     
     #correct_prediction = tf.equal(tf.argmax(y, 1), tf.argmax(y_, 1))
-    print("batch_xs:\n",batch_xs)
+    #print("batch_xs:\n",batch_xs)
     #accuracy = tf.reduce_mean(tf.square(y_-y))
     print(sess.run(accuracy, feed_dict={x: batch_xs,
                                       y_: batch_ys}))
